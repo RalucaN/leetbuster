@@ -56,9 +56,3 @@ class LeetCandidate:
     def get_word_logs(self, word):
         return self.word_logs.get(word, [])
 
-if __name__ == "__main__":
-    detector = LeetCandidate(verbose=False)
-    text = "! @m a l33t h@(]<er. ph3@r my m4|) $k|ll$. +h3 90s w3r3 0ver tw0 d3(ad3$ 4g0 24/02/90."
-    candidates = detector.analyze_text(text)
-
-    print(candidates)
