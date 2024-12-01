@@ -1,7 +1,7 @@
 import re
 import datefinder
 
-class LeetDetector:
+class LeetCandidate:
     def __init__(self, verbose=False):
         self.leet_chars = frozenset('0123456789@$!')
         self.leet_pattern = re.compile(r'^(?=.*[0-9@$!]).+$')
@@ -57,7 +57,7 @@ class LeetDetector:
         return self.word_logs.get(word, [])
 
 if __name__ == "__main__":
-    detector = LeetDetector(verbose=False)
+    detector = LeetCandidate(verbose=False)
     text = "! @m a l33t h@(]<er. ph3@r my m4|) $k|ll$. +h3 90s w3r3 0ver tw0 d3(ad3$ 4g0 24/02/90."
     candidates = detector.analyze_text(text)
 
