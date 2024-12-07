@@ -1,5 +1,6 @@
 import re
 import datefinder
+from dateutil.parser import parse
 
 class LeetCandidate:
     def __init__(self, verbose=False):
@@ -19,11 +20,22 @@ class LeetCandidate:
         self.log_word(word, f"Potential leet: {result}")
         return result
 
+
     def is_date(self, word):
-        matches = list(datefinder.find_dates(word))
-        result = len(matches) > 0
+        try:
+            # Try parsing with dayfirst
+            parse(word, dayfirst=True)
+            result = True
+        except ValueError:
+            try:
+                # Try parsing with yearfirst
+                parse(word, yearfirst=True)
+                result = True
+            except ValueError:
+                    result = False
         self.log_word(word, f"Is date: {result}")
         return result
+
 
     def is_leet_candidate(self, word):
         check_word = word.lstrip('#')
@@ -38,7 +50,7 @@ class LeetCandidate:
 
     def analyze_text(self, text):
         words = text.split()
-        candidates = {}
+        candidates = set()
         
         current_index = 0
         
@@ -47,7 +59,7 @@ class LeetCandidate:
             self.log_word(word, f"Position: {start_position}")
 
             if self.is_leet_candidate(word):
-                candidates.setdefault(word, []).append(start_position)
+                candidates.add(word)
 
             current_index = start_position + len(word)
 
@@ -55,4 +67,3 @@ class LeetCandidate:
 
     def get_word_logs(self, word):
         return self.word_logs.get(word, [])
-
