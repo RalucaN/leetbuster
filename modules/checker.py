@@ -4,32 +4,9 @@ import string
 import time
 import numpy as np 
 
-
-
 d = enchant.Dict("en_US")
 
-
-# Start timing for performance measurement
 start_time = time.time()
-
-text = "! @m a l33t h@(]<er. ph3@r my m4|) $k|ll$. +h3 90s w3r3 0ver tw0 d3(ad3$ 4g0 24/02/90."
-
-candidates={'!':{'!', 'no', 'exclamation', 'not', 'i'},
-           '@m':{'am'},
-            'l33t':{'leet'},
-            'h@(]<er.':{'hacdcer.', 'hatcdlefter.', 'hatcdcer.', 'hatcdlesser.', 'hacdsmallerer.', 'hacdworseer.', 'hatcdsmallerer.', 'hacdlesser.', 'hacdlefter.', 'hatcdworseer.', 'hacker.'},
-            'ph3@r':{'pheatr', 'phthreear', 'phear', 'phbar', 'phtreear', 'phtriplear'},
-            'm4|)':{'maid', 'mforid', 'mfourld', 'mald', 'mfourid', 'mforld', 'mad'},
-            '$k|ll$.':{'dollarkilldollar.', 'cashkillcash.', 'skllls.', 'skills.', 'moneykillmoney.'},
-            '+h3':{'thb', 'thtree', 'the', 'ththree', 'plushe', 'thtriple'},
-            '90s':{'gnulls', 'gfalses', 'gos', 'gnones', '90s'},
-            'w3r3':{'were'},
-            '0ver':{'over'},
-            'tw0':{'two'},
-            'd3(ad3$':{'decadedollar', 'dtreecadtreedollar', 'dtriplecadtriplecash', 'decades', 'dthreecadthreemoney', 'dtriplecadtriplemoney', 'decademoney', 'dbcadbmoney', 'dbcadbcash', 'dthreecadthreedollar', 'dthreecadthreecash', 'dtreecadtreecash', 'dbcadbs', 'dtreecadtrees', 'dtriplecadtripledollar', 'dtreecadtreemoney', 'dthreecadthrees', 'dtriplecadtriples', 'decadecash', 'dbcadbdollar'},
-            '4g0':{'ago', 'agnone', 'agfalse', 'agnull', 'forgo', 'fourgo'}
-}
-
 
 
 def preprocess_candidates(candidates):
@@ -38,16 +15,16 @@ def preprocess_candidates(candidates):
     for key, values in candidates.items():
         new_candidates = set()
 
-        # Check if key is a string
+        # Checking if key is a string
         if isinstance(key, str):
-            # Case 1: Replace first occurrence of "ph" with "f"
+            # Case 1: Replacing first occurrence of "ph" with "f"
             if key.startswith('ph'):
                 new_candidates.update(value.replace('ph', 'f', 1) for value in values if isinstance(value, str))
                 processed_candidates[key] = new_candidates
             else:
                 processed_candidates[key] = values
 
-            # Case 2: Remove punctuation if all candidates end with punctuation
+            # Case 2: Removing punctuation if all candidates end with punctuation
             if all(isinstance(value, str) and value.endswith(string.punctuation) for value in processed_candidates[key]):
                 clean_key = key.rstrip(string.punctuation)
                 clean_values = {value.rstrip(string.punctuation) for value in processed_candidates[key] if isinstance(value, str)}
@@ -148,7 +125,7 @@ def resolve_ambiguities(text, ambiguous_cases, model):
 
 def update_text(text, updates):
     for leet, replacement in updates.items():
-        # Ensure both leet and replacement are strings
+
         if isinstance(leet, str) and isinstance(replacement, str):
             text = text.replace(leet, replacement)
         else:
