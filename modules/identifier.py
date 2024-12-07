@@ -1,11 +1,16 @@
 import re
-import datefinder
 from dateutil.parser import parse
 
 class LeetCandidate:
     def __init__(self, verbose=False):
-        self.leet_chars = frozenset('0123456789@$!')
-        self.leet_pattern = re.compile(r'^(?=.*[0-9@$!]).+$')
+        self.leet_chars = frozenset('0123456789@$!_')
+        self.leet_pattern = re.compile(r'^(?=.*[0-9@$!_]).+$')
+        self.website_pattern = re.compile(
+                                r'^(https?|ftp|file):\/\/'  # Protocol
+                                r'|(?:www\.)?[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'  # Domain name with optional www
+                                r'(:[0-9]+)?'  # Port
+                                r'(\/[^\s]*)?$'  # Path
+                            )
         self.verbose = verbose
         self.word_logs = {}
 
@@ -23,25 +28,27 @@ class LeetCandidate:
 
     def is_date(self, word):
         try:
-            # Try parsing with dayfirst
             parse(word, dayfirst=True)
             result = True
         except ValueError:
             try:
-                # Try parsing with yearfirst
                 parse(word, yearfirst=True)
                 result = True
             except ValueError:
                     result = False
         self.log_word(word, f"Is date: {result}")
         return result
-
+    
+    def is_website(self, word):
+        result = bool(self.website_pattern.match(word))
+        self.log_word(word, f"Is website: {result}")
+        return result
 
     def is_leet_candidate(self, word):
         check_word = word.lstrip('#')
         
         if self.is_potential_leet(check_word):
-            if not self.is_date(check_word):
+            if not self.is_date(check_word) and not self.is_website(check_word):
                 self.log_word(word, "Leet candidate: True")
                 return True
         
