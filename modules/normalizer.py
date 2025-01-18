@@ -40,3 +40,4 @@ def h4ndleCh4r(d4t4Set, ch4r):
             newD4t4 = w0rd.replace(ch4r, (l337_dict[ch4r])[i])
             h4ndl3d.add(newD4t4)
     return h4ndl3d
+
