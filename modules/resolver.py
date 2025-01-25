@@ -1,55 +1,46 @@
 import enchant
 from nltk.corpus import wordnet
 import string
-import time
 import re
-import numpy as np 
+import numpy as np
+import compress_fasttext
 
-d = enchant.Dict("en_US")
-
-start_time = time.time()
-
+enchant_dict = enchant.Dict("en_US")
 
 def preprocess_candidates(candidates):
+    """Preprocess the candidates by handling special cases."""
     processed_candidates = {}
 
     for key, values in candidates.items():
-        new_candidates = set()
-
-        # Checking if key is a string
         if isinstance(key, str):
-            # Case 1: Replacing first occurrence of "ph" with "f"
-            if key.lower().startswith('ph'):
-                new_candidates.update(value.replace('ph', 'f', 1) for value in values if isinstance(value, str))
-                processed_candidates[key] = new_candidates
-            else:
-                processed_candidates[key] = values
+            processed_candidates[key] = values
 
-            # Case 2: Removing punctuation if all candidates end with punctuation
-            if all(isinstance(value, str) and value.endswith(string.punctuation) for value in processed_candidates[key]):
+            if all(isinstance(value, str) and value.endswith(string.punctuation) for value in values):
                 clean_key = key.rstrip(string.punctuation)
-                clean_values = {value.rstrip(string.punctuation) for value in processed_candidates[key] if isinstance(value, str)}
+                clean_values = {value.rstrip(string.punctuation) for value in values if isinstance(value, str)}
                 processed_candidates[clean_key] = clean_values
-                del processed_candidates[key]  # Remove old key
+                del processed_candidates[key]
 
     return processed_candidates
 
+def is_valid_word(word):
+    """Check if a word is valid using the enchant dictionary."""
+    return enchant_dict.check(word)
 
-def is_valid_word(clean_word):
-    return d.check(clean_word)
-
-def word_exists_in_wordnet(clean_word):
-    return len(wordnet.synsets(clean_word)) > 0
+def word_exists_in_wordnet(word):
+    """Check if a word exists in WordNet."""
+    return len(wordnet.synsets(word)) > 0
 
 def is_relevant_punctuation(word):
+    """Check if a word is a relevant punctuation mark."""
     return word in string.punctuation
 
 def score_word(word):
-    enchant_check = is_valid_word(word)
-    wordnet_check = word_exists_in_wordnet(word)
-    return enchant_check + wordnet_check
+    """Score a word based on its validity in enchant and WordNet."""
+    return is_valid_word(word) + word_exists_in_wordnet(word)
 
 def rank_decoded_versions(word_set):
+    """Rank the decoded versions of a word."""
     word_scores = {}
     
     for word in word_set:
@@ -61,17 +52,13 @@ def rank_decoded_versions(word_set):
                 whole_word_score = score_word(clean_word)
                 
                 if whole_word_score > 0:
-                    word_score = 1000  + whole_word_score
+                    word_score = 1000 + whole_word_score
                 else:
                     parts = clean_word.split('-')
                     part_scores = [score_word(part) for part in parts if part]
-                    if part_scores:
-
-                        word_score = sum(part_scores) / len(part_scores)
-                    else:
-                        word_score = 0
+                    word_score = sum(part_scores) / len(part_scores) if part_scores else 0
             else:
-                word_score = is_punctuation * 2  # Score for punctuation
+                word_score = is_punctuation * 2
         else:
             word_score = 0
         
@@ -84,22 +71,21 @@ def rank_decoded_versions(word_set):
     return best_words, max_score
 
 def find_best_candidate(context, candidates, model):
-    
-
+    """Find the best candidate based on context using a word embedding model."""
     context_vector = sum(model[word] for word in context if isinstance(word, str) and word in model)
 
     if np.linalg.norm(context_vector) == 0:
-        return None  # Handle empty context vector
+        return None, float('-inf')
 
     best_candidate = None
     best_score = float('-inf')
 
     for candidate in candidates:
-        if candidate in model:  # Check if candidate is in the model
+        if candidate in model:
             candidate_embedding = model[candidate]
             candidate_norm = np.linalg.norm(candidate_embedding)
 
-            if candidate_norm > 0:  # Ensure candidate embedding is valid
+            if candidate_norm > 0:
                 score = np.dot(context_vector, candidate_embedding) / (np.linalg.norm(context_vector) * candidate_norm)
                 if score > best_score:
                     best_score = score
@@ -107,27 +93,25 @@ def find_best_candidate(context, candidates, model):
 
     return best_candidate, best_score
 
-
 def resolve_ambiguities(text, ambiguous_cases, model):
+    """Resolve ambiguous cases in the text using context and a word embedding model."""
     words = text.split()
     resolved_text = []
     best_score = float('-inf')
+
     for word in words:
         if word in ambiguous_cases:
             context = [w for w in words if w != word]
-            best_candidate, best_score = find_best_candidate(context, ambiguous_cases[word], model)
-            if best_candidate is not None:
-                resolved_text.append(best_candidate)
-            else:
-                resolved_text.append(word)
-
+            best_candidate, score = find_best_candidate(context, ambiguous_cases[word], model)
+            resolved_text.append(best_candidate if best_candidate is not None else word)
+            best_score = max(best_score, score)
         else:
             resolved_text.append(word)
 
-    
     return ' '.join(resolved_text), best_score
 
 def update_text(text, updates):
+    """Update the text with resolved leet speak candidates."""
     sorted_updates = sorted(updates.items(), key=lambda x: len(x[0]), reverse=True)
     
     words = re.findall(r'\S+|\s+', text)
@@ -139,25 +123,34 @@ def update_text(text, updates):
                     words[i] = replacement
                     break
     
-    updated_text = ''.join(words)
-    return updated_text
+    return ''.join(words)
 
 def process_candidates(text, candidates):
+    """Process candidates to resolve unambiguous cases and identify ambiguous ones."""
     updates = {}
     ambiguous = {}
 
     for key, values in candidates.items():
-        best_words, max_score = rank_decoded_versions(values)
+        best_words, _ = rank_decoded_versions(values)
         
         if len(best_words) == 1:
-            updates[key] = best_words[0] # to update the casing to be the same as the key
+            updates[key] = best_words[0]
         elif len(best_words) > 1:
             ambiguous[key] = best_words
 
     text = update_text(text, updates)
     return text, ambiguous
 
-def extract_final_text(texts, list_of_candidates):
+def load_fasttext_model(model_path):
+    """Load the FastText model."""
+    try:
+        return compress_fasttext.models.CompressedFastTextKeyedVectors.load(model_path)
+    except Exception as e:
+        print(f"Error loading FastText model: {e}")
+        return None
+
+def extract_final_text(texts, list_of_candidates, model_path='../data/compress_fasttext/cc.en.300.compressed.bin'):
+    """Extract the final text by resolving leet speak candidates."""
     final_texts = []
     model = None
     need_model = False
@@ -166,23 +159,22 @@ def extract_final_text(texts, list_of_candidates):
     for text, candidates in zip(texts, list_of_candidates):
         processed_candidates = preprocess_candidates(candidates)
         text_first, ambiguous = process_candidates(text, processed_candidates)
-        if len(ambiguous) > 0:
+        if ambiguous:
             need_model = True
         final_texts.append((text_first, ambiguous))
+
     # Load the model only if needed
     if need_model:
         print('Loading model...')
-        import compress_fasttext
-        try:
-            model = compress_fasttext.models.CompressedFastTextKeyedVectors.load('../data/compress_fasttext/cc.en.300.compressed.bin')
-        except:
-            model = compress_fasttext.models.CompressedFastTextKeyedVectors.load('https://github.com/avidale/compress-fasttext/releases/download/v0.0.4/cc.en.300.compressed.bin')
+        model = load_fasttext_model(model_path)
+        if model is None:
+            print("Failed to load FastText model. Ambiguous cases will not be resolved.")
 
     # Second pass: resolve ambiguities if necessary
     resolved_texts = []
     for text, ambiguous in final_texts:
-        if len(ambiguous) > 0:
-            text = resolve_ambiguities(text, ambiguous, model)
+        if ambiguous and model:
+            text, _ = resolve_ambiguities(text, ambiguous, model)
         resolved_texts.append(text)
 
     return resolved_texts
