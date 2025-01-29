@@ -10,10 +10,9 @@ with open(json_file_path, 'r') as file:
 
 def normalize(data):
 
-    # This will hold all the word variations
     data = data.lower()
     varSet = set([])
-    # This will save all the special characters in a word
+
     leet_chars = set([])
 
     for char in LEET_DICT:
